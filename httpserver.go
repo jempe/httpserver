@@ -2,7 +2,8 @@ package main
 
 import (
 	"flag"
-	"log"
+	"fmt"
+	"net"
 	"net/http"
 )
 
@@ -11,7 +12,6 @@ var root = flag.String("root", "/sdcard", "Define the root filesystem path")
 
 func main() {
 	flag.Parse()
-	log.Println("Starting web server at http://0.0.0.0:" + *port)
 
 	changeHeader := func(h http.Handler) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
@@ -23,5 +23,25 @@ func main() {
 	}
 
 	http.Handle("/", changeHeader(http.FileServer(http.Dir(*root))))
+
+	localIP := getLocalIP()
+
+	fmt.Println("Starting web server at http://" + localIP + ":" + *port)
+
 	panic(http.ListenAndServe(":"+*port, nil))
+}
+
+// GetLocalIP returns the non loopback local IP of the host
+func getLocalIP() string {
+	addresses, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, address := range addresses {
+		ip := address.(*net.IPNet)
+		if ip.IP.To4() != nil && !ip.IP.IsLoopback() {
+			return ip.IP.String()
+		}
+	}
+	return ""
 }
